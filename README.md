@@ -1,1 +1,1 @@
-# mlops-lab-02-aws-sagemaker-end-to-end
+ mlops-aws-sagemaker-end-to-end

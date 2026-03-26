@@ -94,11 +94,7 @@ import numpy as np
 import xgboost as xgb
 
 
-FEATURE_NAMES = [
-    "Wine", "Alcohol", "Malic.acid", "Ash", "Acl", "Mg",
-    "Phenols", "Flavanoids", "Nonflavanoid.phenols", "Proanth",
-    "Color.int", "Hue", "OD"
-]
+
 
 
 def model_fn(model_dir):
@@ -119,7 +115,7 @@ def input_fn(request_body, content_type):
 
 
 def predict_fn(input_data, model):
-    dmatrix = xgb.DMatrix(input_data, feature_names=FEATURE_NAMES)
+    dmatrix = xgb.DMatrix(input_data)
     prediction = model.get_booster().predict(dmatrix)
     return prediction
 

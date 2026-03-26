@@ -6,7 +6,8 @@ from fastapi.templating import Jinja2Templates
 
 # SageMaker endpoint name
 ENDPOINT_NAME = "wine-quality-endpoint"
-REGION = "ap-south-1"
+import os
+REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 # SageMaker runtime client
 runtime = boto3.client(
@@ -23,9 +24,9 @@ templates = Jinja2Templates(directory="templates")
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse(
-        "index.html",
-        {"request": request}
-    )
+    request=request,
+    name="index.html"
+)
 
 
 # Prediction API
@@ -45,9 +46,7 @@ def predict(
 ):
 
     # convert to CSV format with headers
-    headers = "fixed_acidity,volatile_acidity,citric_acid,residual_sugar,chlorides,free_sulfur_dioxide,total_sulfur_dioxide,density,pH,sulphates,alcohol"
-    data = f"{fixed_acidity},{volatile_acidity},{citric_acid},{residual_sugar},{chlorides},{free_sulfur_dioxide},{total_sulfur_dioxide},{density},{pH},{sulphates},{alcohol}"
-    payload = f"{headers}\n{data}"
+    payload = f"{fixed_acidity},{volatile_acidity},{citric_acid},{residual_sugar},{chlorides},{free_sulfur_dioxide},{total_sulfur_dioxide},{density},{pH},{sulphates},{alcohol}"
 
     try:
         response = runtime.invoke_endpoint(
@@ -57,17 +56,9 @@ def predict(
         )
 
         result = response["Body"].read().decode()
-        
-        # Parse the JSON response from SageMaker
-        prediction_response = json.loads(result)
-        
-        # Extract prediction value from the response
-        if isinstance(prediction_response, dict) and "predictions" in prediction_response:
-            prediction_value = prediction_response["predictions"][0]["score"]
-        elif isinstance(prediction_response, list):
-            prediction_value = prediction_response[0]["score"]
-        else:
-            prediction_value = result
+
+        # inference.py returns plain CSV string e.g. "5.3421"
+        prediction_value = result.strip().split(",")[0]
 
         return {
             "prediction": str(round(float(prediction_value), 2))

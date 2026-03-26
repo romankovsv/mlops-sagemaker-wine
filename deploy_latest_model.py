@@ -94,7 +94,11 @@ import numpy as np
 import xgboost as xgb
 
 
-
+FEATURE_NAMES = [
+    "fixed acidity", "volatile acidity", "citric acid", "residual sugar",
+    "chlorides", "free sulfur dioxide", "total sulfur dioxide", "density",
+    "pH", "sulphates", "alcohol"
+]
 
 
 def model_fn(model_dir):
@@ -115,7 +119,7 @@ def input_fn(request_body, content_type):
 
 
 def predict_fn(input_data, model):
-    dmatrix = xgb.DMatrix(input_data)
+    dmatrix = xgb.DMatrix(input_data, feature_names=FEATURE_NAMES)
     prediction = model.get_booster().predict(dmatrix)
     return prediction
 

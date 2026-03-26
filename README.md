@@ -10,7 +10,7 @@
 
 ![alt text](image.png)
 
-
+```mermaid
 flowchart TD
     subgraph Developer["👨‍💻 Developer"]
         GH["GitHub Push / Manual Trigger"]
@@ -88,6 +88,7 @@ flowchart TD
     API --> Browser
 
     SM_EP -->|"captured requests"| S3R
+```
 
 MLFlow version 2.21
 

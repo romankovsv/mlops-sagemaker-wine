@@ -53,12 +53,21 @@ s3.download_file(BUCKET, "data/wine.csv", tmp_local)
 # Convert: move last column to first column
 import pandas as pd
 df = pd.read_csv(tmp_local)
-label_col = df.columns[-1]
-cols = [label_col] + [c for c in df.columns if c != label_col]
+# Print this first to see exactly what the names are (e.g., is it 'Quality' or 'quality'?)
+print(df.columns.tolist())
+
+target_variable = 'quality' 
+
+if target_variable not in df.columns:
+    print(f"Warning: {target_variable} not found! Defaulting to last column.")
+    target_variable = df.columns[-1]
+
+# 2. Move target to the first column
+cols = [target_variable] + [c for c in df.columns if c != target_variable]
 df = df[cols]
 
 converted_local = "/tmp/wine_converted.csv"
-df.to_csv(converted_local, index=False)
+df.to_csv(converted_local, index=False, header=False)
 
 converted_key = "data/wine_converted.csv"
 s3.upload_file(converted_local, BUCKET, converted_key)

@@ -55,20 +55,26 @@ if MLFLOW_URI:
     try:
         import mlflow
         import mlflow.xgboost
+
         mlflow.set_tracking_uri(MLFLOW_URI)
         mlflow.set_experiment("wine-quality-training")
-        
+        mlflow.xgboost.autolog()  # must be BEFORE start_run
+
         with mlflow.start_run():
-            # Autolog handles params, metrics, and model logging automatically!
-            mlflow.xgboost.autolog() 
-            model.fit(X_train, y_train) # Autolog triggers during .fit()
-            
-            # Log custom metrics if autolog misses them
-            mlflow.log_metric("custom_rmse", float(rmse))
-            mlflow.log_metric("custom_r2", float(r2))
-            
+            # No second fit — log the already-trained model explicitly
+            mlflow.log_params(params)
+            mlflow.log_metric("rmse", float(rmse))
+            mlflow.log_metric("r2", float(r2))
+            mlflow.xgboost.log_model(model, artifact_path="model")
+
+            metrics_path = os.path.join(MODEL_DIR, "metrics.json")
+            with open(metrics_path, "w") as f:
+                json.dump({"rmse": float(rmse), "r2": float(r2)}, f)
+            mlflow.log_artifact(metrics_path)
+
         print("[OK] Logged to MLflow")
     except Exception as e:
         print(f"[WARN] MLflow failed: {e}")
+        raise  # re-raise so the real error appears in CloudWatch/GitHub Actions logs
 
 print(f"[SUCCESS] Model saved. RMSE: {rmse:.4f}, R2: {r2:.4f}")

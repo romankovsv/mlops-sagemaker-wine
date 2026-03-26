@@ -1,4 +1,10 @@
-MLOps Sagemaker MLFlow FastApi Terraform
+MLOps Project
+Sagemaker for training pipeline and providing endpoint
+MLFlow for experiments tracking and model registry
+Great Expectations for data evaluation
+Sagemaker Monitor for comparison and promotion Champion model
+FastApi for web api
+Terraform for deploying infra: EC2 for MLFlow server, S3 for dataset and model artifacts, roles for interaction
 
 
 ![alt text](image.png)

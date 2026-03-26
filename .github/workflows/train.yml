@@ -31,6 +31,12 @@ jobs:
         pip install pandas
         pip install scikit-learn
         pip install xgboost
+        
+    - name: Upload dataset to S3
+      run: |
+        aws s3 cp data/wine.csv s3://${{ secrets.S3_BUCKET }}/data/wine.csv
+      env:
+        AWS_REGION: ${{ secrets.AWS_REGION }}
 
     - name: Run pipeline
       run: python scripts/create_pipeline.py

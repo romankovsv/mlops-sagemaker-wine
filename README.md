@@ -1,4 +1,4 @@
- Mlops-aws-sagemaker-end-to-end
+MLOps Sagemaker MLFlow FastApi Terraform
 
 
 ![alt text](image.png)

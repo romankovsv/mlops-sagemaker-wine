@@ -20,10 +20,9 @@ def get_csv_path(train_dir: str) -> str:
 csv_path = get_csv_path(TRAIN_DIR)
 df = pd.read_csv(csv_path)
 
-# IMPORTANT: If using 'wine_converted.csv', target is index 0. 
-# If using original 'wine.csv', target is index -1.
-y = df.iloc[:, 0]  
-X = df.iloc[:, 1:]
+
+y = df.iloc[:, -1]   # quality = last column
+X = df.iloc[:, :-1]  # 11 feature columns
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 

@@ -8,6 +8,7 @@ import time
 import tarfile
 import tempfile
 import shutil
+import sagemaker
 
 region = os.environ["AWS_REGION"]
 role = os.environ["SAGEMAKER_ROLE_ARN"]
@@ -18,7 +19,17 @@ boto_session = boto3.Session(region_name=region)
 sm = boto_session.client("sagemaker")
 s3 = boto_session.client("s3")
 
-IMAGE_URI = f"720646828776.dkr.ecr.{region}.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3"
+
+
+IMAGE_URI = sagemaker.image_uris.retrieve(
+    framework="sklearn",
+    region=region,
+    version="1.2-1",
+    py_version="py3",
+    instance_type="ml.m5.large",
+    image_scope="inference"
+)
+print(f"Image URI: {IMAGE_URI}")
 
 print(f"Region: {region}")
 print(f"Role: {role}")

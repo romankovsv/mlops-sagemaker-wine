@@ -7,6 +7,37 @@
 - **FastAPI** — web API for inference
 - **Terraform** — infrastructure: EC2 for MLflow server, S3 for dataset and model artifacts, IAM roles
 
+## Terraform — Infrastructure Setup
+
+**1.** Create state S3 bucket (once, manually):
+```bash
+aws s3 mb s3://tf-state-bucket --region us-east-1
+```
+
+**2.** Edit `terraform/providers.tf` — set `bucket = "tf-state-bucket"`
+
+**3.** Edit `terraform/dev.tfvars` — set `github_oidc_provider_arn` with your account ID
+
+**4.** Deploy dev environment:
+```bash
+cd terraform
+terraform workspace new dev
+terraform init
+terraform plan -var-file=dev.tfvars
+terraform apply -var-file=dev.tfvars
+```
+
+**5.** Copy output values into GitHub repository secrets:
+```bash
+terraform output github_secrets
+```
+
+**6.** Deploy prod environment:
+```bash
+terraform workspace new prod
+terraform apply -var-file=prod.tfvars
+```
+
 
 ![alt text](image.png)
 

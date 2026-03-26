@@ -2,35 +2,38 @@ name: Deploy Model
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Train Wine Pipeline"]
+    types: [completed]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     permissions:
       id-token: write
       contents: read
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ secrets.AWS_REGION }}
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install boto3 sagemaker==2.224.0 scikit-learn joblib
+          # pip install boto3 sagemaker scikit-learn joblib
 
-    - name: Install dependencies
-      run: |
-        pip install --upgrade pip
-        pip install boto3 sagemaker==2.224.0 scikit-learn joblib
-        # pip install boto3 sagemaker scikit-learn joblib
-
-    - name: Deploy endpoint
-      env:
-        AWS_REGION: ${{ secrets.AWS_REGION }} 
-        SAGEMAKER_ROLE_ARN: ${{ secrets.SAGEMAKER_ROLE_ARN }}
-      run: |
-        python deploy_latest_model.py
+      - name: Deploy endpoint
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          SAGEMAKER_ROLE_ARN: ${{ secrets.SAGEMAKER_ROLE_ARN }}
+        run: |
+          python deploy_latest_model.py

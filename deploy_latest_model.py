@@ -1,6 +1,5 @@
 """
-Deploy wine quality model using boto3 directly.
-Bypasses SageMaker Python SDK serving bugs entirely.
+Executes ultimetely on Github Actions Runner
 """
 import boto3
 import os

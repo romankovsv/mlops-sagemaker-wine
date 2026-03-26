@@ -1,5 +1,7 @@
 import os
 import json
+import time
+import boto3
 import joblib
 import pandas as pd
 import xgboost as xgb
@@ -9,6 +11,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 TRAIN_DIR = os.environ.get("SM_CHANNEL_TRAIN", "/opt/ml/input/data/train")
 MODEL_DIR = os.environ.get("SM_MODEL_DIR", "/opt/ml/model")
 MLFLOW_URI = os.environ.get("MLFLOW_TRACKING_URI", "").rstrip("/")
+S3_BUCKET  = os.environ.get("S3_BUCKET", "")
 
 def get_csv_path(train_dir: str) -> str:
     csv_files = [f for f in os.listdir(train_dir) if f.endswith(".csv")]
@@ -16,10 +19,76 @@ def get_csv_path(train_dir: str) -> str:
         raise RuntimeError(f"No CSV found in {train_dir}")
     return os.path.join(train_dir, csv_files[0])
 
+
+def _build_ge_html(result) -> str:
+    """Render a simple HTML page from a GE validation result."""
+    rows = []
+    for r in result.results:
+        status = "&#x2705; PASS" if r.success else "&#x274C; FAIL"
+        expectation = r.expectation_config.expectation_type
+        kwargs = {k: v for k, v in r.expectation_config.kwargs.items() if k != "batch_id"}
+        rows.append(f"<tr><td>{status}</td><td>{expectation}</td><td>{kwargs}</td></tr>")
+    overall = "PASSED" if result["success"] else "FAILED"
+    color = "#2e7d32" if result["success"] else "#c62828"
+    ts = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+    passed = sum(1 for r in result.results if r.success)
+    total = len(result.results)
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>GE Validation Report</title>
+<style>body{{font-family:Arial,sans-serif;padding:24px;max-width:960px;margin:auto}}
+h1{{color:#333}}table{{border-collapse:collapse;width:100%}}
+th,td{{border:1px solid #ccc;padding:10px;text-align:left}}
+th{{background:#f0f0f0}}tr:nth-child(even){{background:#fafafa}}</style></head>
+<body><h1>Wine Quality &#8212; Data Validation Report</h1>
+<p>Generated: {ts}</p>
+<h2 style="color:{color}">Overall: {overall} ({passed}/{total} passed)</h2>
+<table><tr><th>Status</th><th>Expectation</th><th>Parameters</th></tr>
+{chr(10).join(rows)}</table></body></html>"""
+
+
+def validate_dataset(df: pd.DataFrame) -> None:
+    """Run Great Expectations checks and upload HTML report to S3."""
+    try:
+        import great_expectations as gx
+
+        context = gx.get_context(mode="ephemeral")
+        validator = context.sources.pandas_default.read_dataframe(dataframe=df)
+
+        validator.expect_table_column_count_to_equal(12)
+        validator.expect_table_columns_to_match_ordered_list([
+            "fixed acidity", "volatile acidity", "citric acid", "residual sugar",
+            "chlorides", "free sulfur dioxide", "total sulfur dioxide", "density",
+            "pH", "sulphates", "alcohol", "quality",
+        ])
+        validator.expect_table_row_count_to_be_between(min_value=500, max_value=10000)
+        validator.expect_column_values_to_not_be_null("quality")
+
+        result = validator.validate()
+
+        if S3_BUCKET:
+            report_key = f"reports/data-validation/{int(time.time())}.html"
+            boto3.client("s3").put_object(
+                Bucket=S3_BUCKET,
+                Key=report_key,
+                Body=_build_ge_html(result).encode("utf-8"),
+                ContentType="text/html",
+            )
+            print(f"[GE] Report: s3://{S3_BUCKET}/{report_key}")
+
+        if not result["success"]:
+            failed_count = sum(1 for r in result.results if not r.success)
+            raise RuntimeError(f"[GE] Data validation failed: {failed_count} expectation(s) not met")
+
+        print(f"[GE] {len(result.results)}/{len(result.results)} expectations passed")
+
+    except ImportError:
+        print("[GE] great_expectations not installed \u2014 skipping validation")
+
+
 # 1. Load Data
 csv_path = get_csv_path(TRAIN_DIR)
 df = pd.read_csv(csv_path)
-
+validate_dataset(df)
 
 y = df.iloc[:, -1]   # quality = last column
 X = df.iloc[:, :-1]  # 11 feature columns
@@ -44,6 +113,7 @@ model.fit(X_train, y_train)
 preds = model.predict(X_test)
 rmse = mean_squared_error(y_test, preds, squared=False)
 r2 = r2_score(y_test, preds)
+print(f"rmse={rmse:.4f};")  # scraped by SageMaker metric_definitions regex
 
 # 4. Save Model Locally (Always do this for SageMaker)
 os.makedirs(MODEL_DIR, exist_ok=True)

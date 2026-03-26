@@ -29,7 +29,8 @@ estimator = SKLearn(
     framework_version="1.2-1",
     py_version="py3",
     sagemaker_session=sess,
-    environment={"MLFLOW_TRACKING_URI": MLFLOW_URI},
+    environment={"MLFLOW_TRACKING_URI": MLFLOW_URI, "S3_BUCKET": BUCKET},
+    metric_definitions=[{"Name": "rmse", "Regex": r"rmse=([0-9.]+)"}],
     output_path=f"s3://{BUCKET}/models/"
 )
 

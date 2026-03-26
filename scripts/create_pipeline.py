@@ -48,3 +48,14 @@ pipeline = Pipeline(
 pipeline.upsert(role_arn=ROLE_ARN)
 execution = pipeline.start()
 print("Pipeline started:", execution.arn)
+
+
+# Wait and surface the actual failure reason
+execution.wait()  # blocks until complete or failed
+
+steps = execution.list_steps()
+for step in steps:
+    print(f"Step: {step['StepName']} | Status: {step['StepStatus']}")
+    if step.get("FailureReason"):
+        print(f"  FAILURE: {step['FailureReason']}")
+        raise SystemExit(1)
